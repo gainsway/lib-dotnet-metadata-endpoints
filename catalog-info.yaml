@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "lib-dotnet-metadata-endpoints"
+  description: "This library add metadata endpoints to a .NET Core api"
+  annotations:
+    github.com/project-slug: gainsway/lib-dotnet-metadata-endpoints
+    backstage.io/techdocs-ref: dir:.
+  tags: 
+    - dotnet
+spec:
+  type: library
+  lifecycle: experimental
+  owner: "group:default/engineering"

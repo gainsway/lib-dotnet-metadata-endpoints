@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Gainsway.MetadataEndpoint</RootNamespace>
+    <PackageId>Gainsway.MetadataEndpoint</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Engineering</Authors>
+    <Company>Gainsway</Company>
+    <PackageDescription>This library add metadata endpoints to a .NET Core api</PackageDescription>
+    <RepositoryUrl>https://github.com/gainsway/lib-dotnet-metadata-endpoints</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CSharpier.MSBuild" Version="0.28.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

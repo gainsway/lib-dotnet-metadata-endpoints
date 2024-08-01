@@ -1,0 +1,8 @@
+site_name: "lib-dotnet-metadata-endpoints"
+site_description: "This library add metadata endpoints to a .NET Core api"
+
+nav:
+  - Introduction: index.md
+
+plugins:
+  - techdocs-core
