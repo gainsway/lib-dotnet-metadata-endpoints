@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>Gainsway.MetadataEndpoint</RootNamespace>
-    <PackageId>Gainsway.MetadataEndpoint</PackageId>
+    <RootNamespace>Gainsway.MetadataEndpoints</RootNamespace>
+    <PackageId>Gainsway.MetadataEndpoints</PackageId>
     <Version>1.0.0</Version>
     <Authors>Engineering</Authors>
     <Company>Gainsway</Company>
@@ -20,5 +20,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>
