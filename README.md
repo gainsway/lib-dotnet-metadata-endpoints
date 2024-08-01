@@ -13,7 +13,7 @@ This library add metadata endpoints to a .NET Core Api
     /// Program.cs
 
     //... 
-    app.AddMetadataEndpoint();
+    app.AddMetadataEndpoints();
 
     //...
     app.MapControllers();

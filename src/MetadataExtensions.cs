@@ -5,7 +5,7 @@ namespace Gainsway.MetadataEndpoints;
 
 public static class MetadataExtensions
 {
-    public static void AddMetadataEndpointss(this WebApplication app)
+    public static void AddMetadataEndpoints(this WebApplication app)
     {
         var meta = new MetadataDto
         {
