@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>Gainsway.MetadataEndpoint.Tests</RootNamespace>
+    <RootNamespace>Gainsway.MetadataEndpoints.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\MetadataEndpoint.csproj" />
+    <ProjectReference Include="..\src\MetadataEndpoints.csproj" />
   </ItemGroup>
 
 </Project>

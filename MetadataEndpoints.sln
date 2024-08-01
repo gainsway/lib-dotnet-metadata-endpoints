@@ -13,9 +13,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{664D0722-BCD
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{0A1D126D-60B5-433B-A24D-A794EB0DA271}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataEndpoint", "src\MetadataEndpoint.csproj", "{745021DC-4401-4BC7-980B-5BC27E399091}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataEndpoints", "src\MetadataEndpoints.csproj", "{745021DC-4401-4BC7-980B-5BC27E399091}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataEndpoint.Tests", "test\MetadataEndpoint.Tests.csproj", "{C1A310D5-1DA7-4CB9-8E74-7E5C126A139B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataEndpoints.Tests", "test\MetadataEndpoints.Tests.csproj", "{C1A310D5-1DA7-4CB9-8E74-7E5C126A139B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
