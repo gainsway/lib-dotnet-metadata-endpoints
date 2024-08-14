@@ -9,7 +9,7 @@ on:
       - unlabeled
 
 jobs:
-  check:
+  pr-checker:
     runs-on: ubuntu-latest
     permissions:
       contents: write
