@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Gainsway.MetadataEndpoints</RootNamespace>
     <PackageId>Gainsway.MetadataEndpoints</PackageId>
-    <Version>1.0.0</Version>
+    <Version>0.0.0</Version>
     <Authors>Engineering</Authors>
     <Company>Gainsway</Company>
-    <PackageDescription>This library add metadata endpoints to a .NET Core api</PackageDescription>
+    <PackageDescription>This library add metadata endpoints to a .NET Core Api</PackageDescription>
     <RepositoryUrl>https://github.com/gainsway/lib-dotnet-metadata-endpoints</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -16,7 +16,11 @@
     <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CSharpier.MSBuild" Version="0.28.2">
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CSharpier.MSBuild" Version="0.30.3">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

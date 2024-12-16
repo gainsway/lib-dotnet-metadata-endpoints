@@ -1,0 +1,23 @@
+name: Release stable version
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+    ci:
+        name: Continuous Integration
+        uses: gainsway/github-workflows-public/.github/workflows/nuget.ci.yml@main
+        with:
+            dotnet-version: 9.0.x
+        secrets: inherit
+
+    publish:
+        name: Publish
+        needs: ci
+        uses: gainsway/github-workflows-public/.github/workflows/nuget.publish.yml@main
+        with:
+            dotnet-version: 9.0.x
+        secrets: inherit
+        
