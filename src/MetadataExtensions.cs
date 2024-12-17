@@ -11,7 +11,7 @@ public static class MetadataExtensions
         {
             ServiceName = app.Configuration["ServiceName"] ?? string.Empty,
             CommitShortSha = app.Configuration["GIT_SHORT_SHA"] ?? string.Empty,
-            InstanceName = Environment.MachineName
+            InstanceName = Environment.MachineName,
         };
 
         app.MapGet("/metadata", () => Results.Ok(meta))

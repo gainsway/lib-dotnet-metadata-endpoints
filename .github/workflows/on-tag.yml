@@ -1,8 +1,9 @@
-name: ci
+name: Release stable version
 
 on:
-  pull_request:
-
+  push:
+    tags:
+        - 'v*'
 jobs:
   ci:
     name: Continuous Integration
