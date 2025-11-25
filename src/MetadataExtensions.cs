@@ -16,11 +16,12 @@ public static class MetadataExtensions
 
         app.MapGet("/metadata", () => Results.Ok(meta))
             .WithTags(["Metadata"])
-            .WithOpenApi(operation =>
-                new(operation)
+            .AddOpenApiOperationTransformer(
+                (operation, context, ct) =>
                 {
-                    Summary =
-                        "Returns metadata about the service like git sha, service name, and instance name",
+                    operation.Summary =
+                        "Returns metadata about the service like git sha, service name, and instance name";
+                    return Task.CompletedTask;
                 }
             );
     }
