@@ -8,7 +8,7 @@ jobs:
     name: Continuous Integration
     uses: gainsway/github-workflows-public/.github/workflows/nuget.ci.yml@main
     with:
-      dotnet-version: 9.0.x
+      dotnet-version: 10.0.x
     secrets: inherit
 
   publish:
@@ -16,6 +16,5 @@ jobs:
     needs: ci
     uses: gainsway/github-workflows-public/.github/workflows/nuget.publish.yml@main
     with:
-        dotnet-version: 9.0.x
+      dotnet-version: 10.0.x
     secrets: inherit
-    
