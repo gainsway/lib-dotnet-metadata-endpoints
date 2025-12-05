@@ -16,6 +16,8 @@ public static class MetadataExtensions
 
         app.MapGet("/metadata", () => Results.Ok(meta))
             .WithTags(["Metadata"])
+            // .WithOpenApi method is obsolete - given we use SwashBuckle, we will need to replace it with IOperationFilter (like we do in lib-dotnet-liquid-api-auth)
+            // https://learn.microsoft.com/en-us/dotnet/core/compatibility/aspnet-core/10/withopenapi-deprecated
             .WithOpenApi(operation =>
                 new(operation)
                 {
