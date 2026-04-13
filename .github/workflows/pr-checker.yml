@@ -4,9 +4,6 @@ on:
     types:
       - opened
       - edited
-      - synchronize
-      - labeled
-      - unlabeled
 
 jobs:
   pr-checker:
