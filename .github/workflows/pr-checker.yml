@@ -11,4 +11,4 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: gainsway/github-workflows/.github/workflows/job.pr-checker.yml@d9014b92c7b874bd23e83be096f96c4582d0958e
+    uses: gainsway/github-workflows/.github/workflows/job.pr-checker.yml@main
