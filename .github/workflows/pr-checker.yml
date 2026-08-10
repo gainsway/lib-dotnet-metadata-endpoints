@@ -1,4 +1,5 @@
 name: pr-checker
+
 on:
   pull_request_target:
     types:
