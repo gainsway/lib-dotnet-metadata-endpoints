@@ -5,10 +5,13 @@ on:
     types:
       - opened
       - edited
+      - synchronize
+      - labeled
+      - unlabeled
 
 jobs:
   pr-checker:
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     uses: gainsway/github-workflows-public/.github/workflows/job.pr-checker.yml@main
