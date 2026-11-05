@@ -12,6 +12,8 @@ namespace Gainsway.MetadataEndpoints.Tests;
 public class MetadataEndpointsTests
 {
     private const string FullSha = "8f3c2a1d9b7e4f60a5c3e2d1b0a9f8e7d6c5b4a3";
+    private const string SpecHash =
+        "3b1f0c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c";
 
     [Test]
     public async Task ReturnsTheBuildIdentity()
@@ -84,7 +86,56 @@ public class MetadataEndpointsTests
     {
         var app = BuildApp(new() { ["ServiceName"] = serviceName });
 
-        Assert.Throws<InvalidOperationException>(() => app.AddMetadataEndpoints());
+        Assert.Throws<InvalidOperationException>(() => app.AddMetadataEndpoints(EmptyDirectory()));
+    }
+
+    [Test]
+    public async Task ReportsTheCommittedSpecHashes()
+    {
+        var directory = DirectoryWithHashes(
+            $$"""{ "openapi.json": "{{SpecHash}}", "openapi-api-v1.json": "{{SpecHash}}" }"""
+        );
+        await using var app = await StartApp(
+            new() { ["ServiceName"] = "user-service" },
+            hashesDirectory: directory
+        );
+
+        var hashes = (await GetMetadata(app)).GetProperty("openApiSpecHashes");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(hashes.GetProperty("openapi.json").GetString(), Is.EqualTo(SpecHash));
+            Assert.That(
+                hashes.GetProperty("openapi-api-v1.json").GetString(),
+                Is.EqualTo(SpecHash)
+            );
+        });
+    }
+
+    [Test]
+    public async Task ReturnsExplicitNullWithoutAHashFile()
+    {
+        await using var app = await StartApp(new() { ["ServiceName"] = "user-service" });
+
+        var body = await GetMetadata(app);
+
+        Assert.That(
+            body.GetProperty("openApiSpecHashes").ValueKind,
+            Is.EqualTo(JsonValueKind.Null)
+        );
+    }
+
+    [TestCase("not json")]
+    [TestCase("[]")]
+    [TestCase("""{ "openapi.json": "" }""")]
+    [TestCase("""{ "openapi.json": null }""")]
+    public void FailsAtStartupWithAnUnreadableHashFile(string content)
+    {
+        var app = BuildApp(new() { ["ServiceName"] = "user-service" });
+
+        Assert.Throws<InvalidOperationException>(() =>
+            app.AddMetadataEndpoints(DirectoryWithHashes(content))
+        );
     }
 
     [Test]
@@ -107,6 +158,7 @@ public class MetadataEndpointsTests
             Assert.That(operation.Summary, Does.Contain("release tag"));
             Assert.That(IsNullable(schema, "releaseTag"), Is.True);
             Assert.That(IsNullable(schema, "commitSha"), Is.True);
+            Assert.That(IsNullable(schema, "openApiSpecHashes"), Is.True);
             Assert.That(IsNullable(schema, "serviceName"), Is.False);
             Assert.That(IsNullable(schema, "environment"), Is.False);
             Assert.That(schema.Properties!.ContainsKey("commitShortSha"), Is.False);
@@ -115,6 +167,18 @@ public class MetadataEndpointsTests
 
     private static bool IsNullable(IOpenApiSchema schema, string property) =>
         schema.Properties![property].Type!.Value.HasFlag(JsonSchemaType.Null);
+
+    private static string EmptyDirectory() => Directory.CreateTempSubdirectory().FullName;
+
+    private static string DirectoryWithHashes(string content)
+    {
+        var directory = EmptyDirectory();
+        File.WriteAllText(
+            Path.Combine(directory, MetadataExtensions.OpenApiSpecHashesFileName),
+            content
+        );
+        return directory;
+    }
 
     private static async Task<JsonElement> GetMetadata(WebApplication app)
     {
@@ -126,11 +190,12 @@ public class MetadataEndpointsTests
     private static async Task<WebApplication> StartApp(
         Dictionary<string, string?> configuration,
         Action<IServiceCollection>? configureServices = null,
-        string environment = "Production"
+        string environment = "Production",
+        string? hashesDirectory = null
     )
     {
         var app = BuildApp(configuration, configureServices, environment);
-        app.AddMetadataEndpoints();
+        app.AddMetadataEndpoints(hashesDirectory ?? EmptyDirectory());
         await app.StartAsync();
         return app;
     }

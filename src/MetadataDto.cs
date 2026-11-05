@@ -17,6 +17,12 @@ public record MetadataDto
     public required string? CommitSha { get; init; }
 
     /// <summary>
+    /// The SHA-256 of each committed OpenAPI spec file, keyed by file name, as lowercase hex.
+    /// <c>null</c> when the service has no <c>openapi-hashes.json</c>.
+    /// </summary>
+    public required IReadOnlyDictionary<string, string>? OpenApiSpecHashes { get; init; }
+
+    /// <summary>
     /// The ASP.NET environment name the app started with, not a full configuration identity.
     /// </summary>
     public required string Environment { get; init; }
