@@ -20,7 +20,20 @@ This library add metadata endpoints to a .NET Core Api
     app.Run();
   ```
 
-## Environment variables
+## Response
 
-The metadata endpoint will return data in the following environment variables:
-- `GIT_SHORT_SHA`
+`GET /metadata` returns:
+
+| Field | Source | Notes |
+| --- | --- | --- |
+| `serviceName` | `ServiceName` configuration value | Required. The app fails at startup when it is missing or blank. |
+| `releaseTag` | `GIT_REF_NAME` env var | The release tag the build supplied, for example `v2.2.3`. |
+| `commitSha` | `GIT_SHORT_SHA` env var | The full commit SHA, despite the env var's name. |
+| `environment` | ASP.NET environment name | Not a full configuration identity. |
+| `instanceName` | Machine name | The pod name in Kubernetes. |
+
+The shared image build passes `GIT_REF_NAME` and `GIT_SHA` as build args, and each service's Dockerfile sets them as env vars.
+
+`releaseTag` and `commitSha` are `null` when the value is missing or blank. `null` means the build identity is unavailable. A local `dotnet run` returns `null`, and so would a misconfigured image, so any release check must reject `null`.
+
+A response describes the one instance that answered. During a rollout, check the rollout status as well.
