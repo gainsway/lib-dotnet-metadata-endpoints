@@ -26,7 +26,7 @@ public static class MetadataExtensions
         {
             ServiceName = serviceName,
             ReleaseTag = BuildValue(app.Configuration["GIT_REF_NAME"]),
-            CommitSha = BuildValue(app.Configuration["GIT_SHORT_SHA"]),
+            CommitShortSha = BuildValue(app.Configuration["GIT_SHORT_SHA"]),
             OpenApiSpecHashes = ReadOpenApiSpecHashes(
                 Path.Combine(hashesDirectory, OpenApiSpecHashesFileName)
             ),

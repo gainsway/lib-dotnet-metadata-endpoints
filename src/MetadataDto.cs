@@ -11,10 +11,10 @@ public record MetadataDto
     public required string? ReleaseTag { get; init; }
 
     /// <summary>
-    /// The full commit SHA the image was built from.
+    /// The full commit SHA the image was built from, despite the name.
     /// <c>null</c> when the build identity is unavailable.
     /// </summary>
-    public required string? CommitSha { get; init; }
+    public required string? CommitShortSha { get; init; }
 
     /// <summary>
     /// The SHA-256 of each committed OpenAPI spec file, keyed by file name, as lowercase hex.

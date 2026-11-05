@@ -21,7 +21,7 @@ Most of the change is in this library's code. The spec hashes also need an MSBui
 | --- | --- | --- |
 | `ServiceName` | `ServiceName` in `appsettings.json` | fails at startup when missing or blank, instead of `""` |
 | `ReleaseTag` | `GIT_REF_NAME` env var | new |
-| `CommitSha` | `GIT_SHORT_SHA` env var | renamed from `CommitShortSha`; `null` when missing or blank, instead of `""` |
+| `CommitShortSha` | `GIT_SHORT_SHA` env var | `null` when missing or blank, instead of `""` |
 | `OpenApiSpecHashes` | committed `openapi-hashes.json` | new |
 | `Environment` | `app.Environment.EnvironmentName` | new |
 | `InstanceName` | `Environment.MachineName` | unchanged |
@@ -32,7 +32,7 @@ These follow the identity attributes that OpenTelemetry defines (`service.name`,
 
 - **`ServiceName`:** which service answered.
 - **`ReleaseTag`:** the release tag the build supplied. It answers "is my release running on this instance?". It is information the build passes in, not proof that CI produced the image.
-- **`CommitSha`:** the exact source, as the full 40-character SHA. It is the only identifier for a build without a tag. Today the field is called `CommitShortSha`, but it already holds the full SHA, because `job.build.yml` passes `github.sha` unchanged and the Dockerfiles keep it as it is. The full value is what you verify against, so the field is renamed to match it rather than shortened.
+- **`CommitShortSha`:** the exact source. It is the only identifier for a build without a tag. Despite its name, it holds the full 40-character SHA, because `job.build.yml` passes `github.sha` unchanged and the Dockerfiles keep it as it is. The full value is what you verify against, so it is kept. The name stays as it is, to avoid a breaking rename.
 - **`OpenApiSpecHashes`:** the version of each API contract the instance carries. It maps each committed spec file to the SHA-256 of its exact bytes, for example `openapi.json`, `openapi-internal.json` and `openapi-api-v1.json`. A release that leaves a spec's bytes unchanged keeps its hash. It covers every generated spec, public or internal, whoever reads it.
 - **`Environment`:** the ASP.NET environment name the app started with. It catches a pod running with the wrong name, such as a prod pod on `Development`. It is not a full configuration identity: two deployments can both legitimately run as `Production`, and a wrong value inside one environment, such as an Auth0 domain or a connection string, does not show. `/metadata` stops at the name, because reporting configuration values would leak them.
 - **`InstanceName`:** the pod that answered. In Kubernetes the hostname is the pod name, for example `user-service-7c9f8d6b5-x2k4p`. It matches OpenTelemetry's `service.instance.id`, so a response can be traced to that pod in Grafana.
@@ -47,10 +47,10 @@ These follow the identity attributes that OpenTelemetry defines (`service.name`,
 ### Missing values
 
 - **A missing or blank `ServiceName` is a configuration mistake.** The library throws at startup. Services already throw for a missing value when they set up observability (for example `account-service/src/Core/Extensions/ConfigurationExtensions.cs:11`), so no running service is affected.
-- **A missing or blank `ReleaseTag` or `CommitSha` returns `null`, meaning "build identity unavailable".** Whitespace counts as blank. A local `dotnet run` returns `null`, and so would a misconfigured prod image. So `null` does not mean "local". Any check that relies on these fields, such as a release check, must reject `null`.
+- **A missing or blank `ReleaseTag` or `CommitShortSha` returns `null`, meaning "build identity unavailable".** Whitespace counts as blank. A local `dotnet run` returns `null`, and so would a misconfigured prod image. So `null` does not mean "local". Any check that relies on these fields, such as a release check, must reject `null`.
 - **A missing `openapi-hashes.json` returns `null` for `OpenApiSpecHashes`, meaning "spec versions unavailable".** That covers a service that generates no specs and one whose hash file was never committed. A hash file that exists but can't be read is a mistake, and the library throws at startup.
 
-| Where it runs | `ReleaseTag` | `CommitSha` | `OpenApiSpecHashes` | `Environment` |
+| Where it runs | `ReleaseTag` | `CommitShortSha` | `OpenApiSpecHashes` | `Environment` |
 | --- | --- | --- | --- | --- |
 | Image built by CI from a tag | `v2.2.3` | full SHA | the committed hashes | `Production` |
 | Local Docker build | `local` | `<local-sha>` | the committed hashes | as set in compose, e.g. `Development` |
@@ -64,7 +64,7 @@ Prod:
 {
   "serviceName": "user-service",
   "releaseTag": "v2.2.3",
-  "commitSha": "8f3c2a1d9b7e4f60a5c3e2d1b0a9f8e7d6c5b4a3",
+  "commitShortSha": "8f3c2a1d9b7e4f60a5c3e2d1b0a9f8e7d6c5b4a3",
   "openApiSpecHashes": {
     "openapi-api-v1.json": "3b1f…",
     "openapi-internal.json": "a94c…",
@@ -81,7 +81,7 @@ Prod:
 {
   "serviceName": "user-service",
   "releaseTag": null,
-  "commitSha": null,
+  "commitShortSha": null,
   "openApiSpecHashes": {
     "openapi-api-v1.json": "3b1f…",
     "openapi-internal.json": "a94c…",
@@ -130,9 +130,13 @@ The hash file changes in the same commit as the spec it describes, so each tag c
 
 At startup, the library reads `openapi-hashes.json` from `AppContext.BaseDirectory` and reports it as `OpenApiSpecHashes`.
 
+## Where to read it
+
+Each service has an internal hostname on the internal ALB, for example `https://user-service.gainsway.int/metadata`, reachable over Twingate. `/metadata` is not on the public gateway (`api.gainsway.io`).
+
 ## What a response proves
 
-A response describes the one instance that answered. During a rollout, each request reaches one pod, and old and new pods answer side by side. So a matching tag on one response does not prove the rollout finished. A release check pairs `/metadata` with the rollout status, and with a smoke test through the real gateway route, which port-forwarding bypasses.
+A response describes the one instance that answered. During a rollout, each request reaches one pod, and old and new pods answer side by side. So a matching tag on one response does not prove the rollout finished. A release check pairs `/metadata` with the rollout status, and with a smoke test through the public gateway route, which the internal hostname bypasses.
 
 ## Benefits
 
@@ -149,12 +153,12 @@ A response describes the one instance that answered. During a rollout, each requ
 ## Changes
 
 **In this library**
-- `src/MetadataDto.cs`: add `ReleaseTag`, `OpenApiSpecHashes` and `Environment`, and rename `CommitShortSha` to `CommitSha`. `ReleaseTag` and `CommitSha` are `string?`. `OpenApiSpecHashes` is `IReadOnlyDictionary<string, string>?`. `ServiceName`, `Environment` and `InstanceName` stay `required string`.
+- `src/MetadataDto.cs`: add `ReleaseTag`, `OpenApiSpecHashes` and `Environment`. `ReleaseTag` and `CommitShortSha` are `string?`. `OpenApiSpecHashes` is `IReadOnlyDictionary<string, string>?`. `ServiceName`, `Environment` and `InstanceName` stay `required string`.
 - `src/MetadataExtensions.cs`: read `GIT_REF_NAME`, `app.Environment.EnvironmentName` and `openapi-hashes.json`. Throw at startup when `ServiceName` is missing or blank, or when the hash file exists but can't be read. Return `null` for missing, empty or whitespace build values, and for a missing hash file. Set the summary with `.WithSummary(...)` instead of the obsolete `.WithOpenApi`, and return `TypedResults.Ok` so Swashbuckle documents the response schema.
 - `build/Gainsway.MetadataEndpoints.targets`: the generation target and the packaging item, as described in [The build target](#the-build-target).
 - `README.md` and `docs/index.md`: document the response, the hash file, and what `null` means.
 - `test/`: tests that check:
-  - the HTTP response uses `commitSha`, `releaseTag` and `openApiSpecHashes`, and writes missing values as explicit `null`, not omitted fields;
+  - the HTTP response uses `commitShortSha`, `releaseTag` and `openApiSpecHashes`, and writes missing values as explicit `null`, not omitted fields;
   - build values that are missing, empty or whitespace all return `null`;
   - a missing, empty or whitespace `ServiceName` fails at startup;
   - a hash file is reported as written, a missing one gives `null`, and an unreadable one fails at startup;
@@ -167,14 +171,13 @@ A response describes the one instance that answered. During a rollout, each requ
   - the test project neither writes a hash file nor copies a second one.
 
 **Release**
-- A major version, `3.0.0`. Renaming `CommitShortSha` to `CommitSha` removes a public property and changes a JSON field name, which breaks the contract even though no consumer reads it today. Failing at startup on a blank `ServiceName` is also new. No migration is needed: nothing reads the old field, and all 10 services set `ServiceName`.
+- A major version, `3.0.0`. `commitShortSha` can now be `null` where it always held a string, and a missing or blank `ServiceName` now fails at startup. No migration is needed: nothing parses the response, and all 10 services set `ServiceName`.
 - Bump user-service and OMS first, because the public API docs prod check needs them. The other eight services and `backstage-templates` follow on their next change.
 - After the bump, each service's next Debug build writes `openapi-hashes.json` and regenerates its `openapi.json`, which updates the documented `/metadata` response. Both are committed with the bump.
 
 ## Not in this change
 
-- **Renaming the `GIT_SHORT_SHA` env var.** It also holds the full SHA. Renaming it touches every service Dockerfile, `lib-dotnet-observability` and each service's `ApplicationMetadata`, so the library keeps reading `GIT_SHORT_SHA` for now.
+- **Renaming `CommitShortSha` and the `GIT_SHORT_SHA` env var.** Both hold the full SHA despite the name. Renaming the field is a breaking change to the response. Renaming it touches every service Dockerfile, `lib-dotnet-observability` and each service's `ApplicationMetadata`, so the library keeps reading `GIT_SHORT_SHA` for now.
 - **The observability version.** `lib-dotnet-observability` sets OpenTelemetry's `service.version` to the commit SHA (`src/ObservabilityExtensions.cs:33`), so traces and `/metadata` name the version differently. Aligning them is a change to that library.
 - **Duplicate reading in services.** Services read the same env vars into their own `ApplicationMetadata` record (`src/Core/AppMetadata.cs`), with `""` fallbacks, to feed observability. Moving that onto this library is separate.
-- **A route to `/metadata`.** It is not exposed on `api.gainsway.io` or `api.gainsway.int`, so today it needs `kubectl port-forward`. A private route on `api.gainsway.int` would make it a single request.
 - **More configuration values.** Domains, URLs and connection strings stay out, so `/metadata` doesn't leak configuration.

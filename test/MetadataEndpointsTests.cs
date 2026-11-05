@@ -33,13 +33,12 @@ public class MetadataEndpointsTests
         {
             Assert.That(body.GetProperty("serviceName").GetString(), Is.EqualTo("user-service"));
             Assert.That(body.GetProperty("releaseTag").GetString(), Is.EqualTo("v2.2.3"));
-            Assert.That(body.GetProperty("commitSha").GetString(), Is.EqualTo(FullSha));
+            Assert.That(body.GetProperty("commitShortSha").GetString(), Is.EqualTo(FullSha));
             Assert.That(body.GetProperty("environment").GetString(), Is.EqualTo("Production"));
             Assert.That(
                 body.GetProperty("instanceName").GetString(),
                 Is.EqualTo(Environment.MachineName)
             );
-            Assert.That(body.TryGetProperty("commitShortSha", out _), Is.False);
         });
     }
 
@@ -62,7 +61,10 @@ public class MetadataEndpointsTests
         Assert.Multiple(() =>
         {
             Assert.That(body.GetProperty("releaseTag").ValueKind, Is.EqualTo(JsonValueKind.Null));
-            Assert.That(body.GetProperty("commitSha").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(
+                body.GetProperty("commitShortSha").ValueKind,
+                Is.EqualTo(JsonValueKind.Null)
+            );
         });
     }
 
@@ -157,11 +159,10 @@ public class MetadataEndpointsTests
         {
             Assert.That(operation.Summary, Does.Contain("release tag"));
             Assert.That(IsNullable(schema, "releaseTag"), Is.True);
-            Assert.That(IsNullable(schema, "commitSha"), Is.True);
+            Assert.That(IsNullable(schema, "commitShortSha"), Is.True);
             Assert.That(IsNullable(schema, "openApiSpecHashes"), Is.True);
             Assert.That(IsNullable(schema, "serviceName"), Is.False);
             Assert.That(IsNullable(schema, "environment"), Is.False);
-            Assert.That(schema.Properties!.ContainsKey("commitShortSha"), Is.False);
         });
     }
 
