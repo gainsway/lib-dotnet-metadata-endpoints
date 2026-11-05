@@ -48,7 +48,7 @@ public static class MetadataExtensions
 
     // A missing file means the spec versions are unavailable. A file that exists but can't be
     // read is a build mistake, so it fails at startup rather than reporting partial hashes.
-    private static IReadOnlyDictionary<string, string>? ReadOpenApiSpecHashes(string path)
+    private static SortedDictionary<string, string>? ReadOpenApiSpecHashes(string path)
     {
         if (!File.Exists(path))
         {
