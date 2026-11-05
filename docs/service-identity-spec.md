@@ -32,14 +32,14 @@ These follow the identity attributes that OpenTelemetry defines (`service.name`,
 
 - **`ServiceName`:** which service answered.
 - **`ReleaseTag`:** the release tag the build supplied. It answers "is my release running on this instance?". It is information the build passes in, not proof that CI produced the image.
-- **`CommitShortSha`:** the exact source. It is the only identifier for a build without a tag. Despite its name, it holds the full 40-character SHA, because `job.build.yml` passes `github.sha` unchanged and the Dockerfiles keep it as it is. The full value is what you verify against, so it is kept. The name stays as it is, to avoid a breaking rename.
+- **`CommitShortSha`:** the source, as the 7-character short SHA GitHub shows. It is the only identifier for a build without a tag. `job.build.yml` shortens `github.sha` before passing it as the `GIT_SHA` build arg, and the Dockerfiles copy it into `GIT_SHORT_SHA`.
 - **`OpenApiSpecHashes`:** the version of each API contract the instance carries. It maps each committed spec file to the SHA-256 of its exact bytes, for example `openapi.json`, `openapi-internal.json` and `openapi-api-v1.json`. A release that leaves a spec's bytes unchanged keeps its hash. It covers every generated spec, public or internal, whoever reads it.
 - **`Environment`:** the ASP.NET environment name the app started with. It catches a pod running with the wrong name, such as a prod pod on `Development`. It is not a full configuration identity: two deployments can both legitimately run as `Production`, and a wrong value inside one environment, such as an Auth0 domain or a connection string, does not show. `/metadata` stops at the name, because reporting configuration values would leak them.
 - **`InstanceName`:** the pod that answered. In Kubernetes the hostname is the pod name, for example `user-service-7c9f8d6b5-x2k4p`. It matches OpenTelemetry's `service.instance.id`, so a response can be traced to that pod in Grafana.
 
 ### Where the values come from
 
-- **The release tag and the commit.** `github-workflows/.github/workflows/job.build.yml` passes `GIT_REF_NAME` (the image tag) and `GIT_SHA` (`github.sha`) as build args. The service Dockerfiles turn them into env vars (`user-service/src/Dockerfile:8-9`).
+- **The release tag and the commit.** `github-workflows/.github/workflows/job.build.yml` passes `GIT_REF_NAME` (the image tag) and `GIT_SHA` (the first 7 characters of `github.sha`) as build args. The service Dockerfiles turn them into env vars (`user-service/src/Dockerfile:8-9`).
 - **The spec hashes.** See [Spec hashes](#spec-hashes).
 - **The service name.** Each service's `appsettings.json`. All 10 consuming services set it.
 - **The environment name.** `ASPNETCORE_ENVIRONMENT`. Prod charts don't set it, so prod reports `Production` through ASP.NET's documented fallback.
@@ -52,7 +52,7 @@ These follow the identity attributes that OpenTelemetry defines (`service.name`,
 
 | Where it runs | `ReleaseTag` | `CommitShortSha` | `OpenApiSpecHashes` | `Environment` |
 | --- | --- | --- | --- | --- |
-| Image built by CI from a tag | `v2.2.3` | full SHA | the committed hashes | `Production` |
+| Image built by CI from a tag | `v2.2.3` | short SHA | the committed hashes | `Production` |
 | Local Docker build | `local` | `<local-sha>` | the committed hashes | as set in compose, e.g. `Development` |
 | `dotnet run` | `null` | `null` | the hashes from the last Debug build | `Development` from the launch profile |
 
@@ -64,7 +64,7 @@ Prod:
 {
   "serviceName": "user-service",
   "releaseTag": "v2.2.3",
-  "commitShortSha": "8f3c2a1d9b7e4f60a5c3e2d1b0a9f8e7d6c5b4a3",
+  "commitShortSha": "8f3c2a1",
   "openApiSpecHashes": {
     "openapi-api-v1.json": "3b1f…",
     "openapi-internal.json": "a94c…",
@@ -177,7 +177,7 @@ A response describes the one instance that answered. During a rollout, each requ
 
 ## Not in this change
 
-- **Renaming `CommitShortSha` and the `GIT_SHORT_SHA` env var.** Both hold the full SHA despite the name. Renaming the field is a breaking change to the response. Renaming it touches every service Dockerfile, `lib-dotnet-observability` and each service's `ApplicationMetadata`, so the library keeps reading `GIT_SHORT_SHA` for now.
+- **Renaming the `GIT_SHA` build arg.** It now carries the short SHA. Renaming it touches every service Dockerfile, so it keeps its name.
 - **The observability version.** `lib-dotnet-observability` sets OpenTelemetry's `service.version` to the commit SHA (`src/ObservabilityExtensions.cs:33`), so traces and `/metadata` name the version differently. Aligning them is a change to that library.
 - **Duplicate reading in services.** Services read the same env vars into their own `ApplicationMetadata` record (`src/Core/AppMetadata.cs`), with `""` fallbacks, to feed observability. Moving that onto this library is separate.
 - **More configuration values.** Domains, URLs and connection strings stay out, so `/metadata` doesn't leak configuration.

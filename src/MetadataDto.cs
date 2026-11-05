@@ -11,7 +11,7 @@ public record MetadataDto
     public required string? ReleaseTag { get; init; }
 
     /// <summary>
-    /// The full commit SHA the image was built from, despite the name.
+    /// The short commit SHA the image was built from, 7 characters.
     /// <c>null</c> when the build identity is unavailable.
     /// </summary>
     public required string? CommitShortSha { get; init; }

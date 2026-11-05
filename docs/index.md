@@ -28,7 +28,7 @@ This library add metadata endpoints to a .NET Core Api
 | --- | --- | --- |
 | `serviceName` | `ServiceName` configuration value | Required. The app fails at startup when it is missing or blank. |
 | `releaseTag` | `GIT_REF_NAME` env var | The release tag the build supplied, for example `v2.2.3`. |
-| `commitShortSha` | `GIT_SHORT_SHA` env var | The full commit SHA, despite the name. |
+| `commitShortSha` | `GIT_SHORT_SHA` env var | The short commit SHA, 7 characters. |
 | `openApiSpecHashes` | committed `openapi-hashes.json` | The SHA-256 of each OpenAPI spec file, keyed by file name. |
 | `environment` | ASP.NET environment name | Not a full configuration identity. |
 | `instanceName` | Machine name | The pod name in Kubernetes. |
