@@ -1,0 +1,112 @@
+<Project>
+  <!--
+    Writes openapi-hashes.json, the SHA-256 of every committed OpenAPI spec, which /metadata reports.
+    Shipped in build/ so only the API project that references this package directly gets it.
+    Projects that reference the API project, such as tests, don't generate their own.
+  -->
+  <PropertyGroup>
+    <OpenApiSpecDirectory Condition="'$(OpenApiSpecDirectory)' == ''"
+      >$(MSBuildProjectDirectory)/../../</OpenApiSpecDirectory>
+    <OpenApiSpecHashesFile>$(MSBuildProjectDirectory)/openapi-hashes.json</OpenApiSpecHashesFile>
+  </PropertyGroup>
+
+  <!--
+    Packaging: carry the committed file into build and publish output. This is an item, not a
+    target, so a clean Release publish (the Docker build) includes it without generation running.
+    The Web SDK may already include it as Content, so it is removed first to avoid a duplicate.
+  -->
+  <ItemGroup Condition="Exists('$(OpenApiSpecHashesFile)')">
+    <Content Remove="$(OpenApiSpecHashesFile)" />
+    <None Remove="$(OpenApiSpecHashesFile)" />
+    <Content
+      Include="$(OpenApiSpecHashesFile)"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+  </ItemGroup>
+
+  <!-- Generation: runs after the service's Debug PostBuild step has just generated the specs. -->
+  <Target
+    Name="_WriteOpenApiSpecHashesAfterPostBuild"
+    AfterTargets="PostBuild"
+    Condition="'$(Configuration)' == 'Debug'"
+    DependsOnTargets="WriteOpenApiSpecHashes"
+  />
+
+  <!--
+    Can also run on its own (-t:WriteOpenApiSpecHashes), so a drift check can rehash specs it
+    generated from a Release build.
+  -->
+  <Target Name="WriteOpenApiSpecHashes">
+    <WriteOpenApiSpecHashesFile
+      SpecDirectory="$(OpenApiSpecDirectory)"
+      OutputFile="$(OpenApiSpecHashesFile)"
+    />
+    <!-- The normal copy to the output folder has already run, and on a first build the file didn't exist yet. -->
+    <Copy
+      SourceFiles="$(OpenApiSpecHashesFile)"
+      DestinationFolder="$(OutDir)"
+      SkipUnchangedFiles="true"
+      Condition="'$(OutDir)' != ''"
+    />
+  </Target>
+
+  <UsingTask
+    TaskName="WriteOpenApiSpecHashesFile"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
+  >
+    <ParameterGroup>
+      <SpecDirectory ParameterType="System.String" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Security.Cryptography" />
+      <Using Namespace="System.Text" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        if (!Directory.Exists(SpecDirectory))
+        {
+            Log.LogError("OpenAPI spec directory not found: " + SpecDirectory);
+            return false;
+        }
+
+        var outputName = Path.GetFileName(OutputFile);
+
+        // Every spec file present, rebuilt from scratch, so a removed spec drops out.
+        var specs = Directory
+            .GetFiles(SpecDirectory, "openapi*.json")
+            .Where(path => Path.GetFileName(path) != outputName)
+            .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
+            .ToList();
+
+        var json = new StringBuilder("{");
+        for (var i = 0; i < specs.Count; i++)
+        {
+            string hash;
+            using (var sha = SHA256.Create())
+            using (var stream = File.OpenRead(specs[i]))
+            {
+                hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+            }
+
+            var name = Path.GetFileName(specs[i]).Replace("\\", "\\\\").Replace("\"", "\\\"");
+            json.Append(i == 0 ? "\n" : ",\n").Append("  \"").Append(name).Append("\": \"").Append(hash).Append("\"");
+        }
+        json.Append(specs.Count == 0 ? "}\n" : "\n}\n");
+
+        var content = json.ToString();
+
+        // Only write when something changed, so an unchanged rebuild leaves the file untouched.
+        if (!File.Exists(OutputFile) || File.ReadAllText(OutputFile) != content)
+        {
+            File.WriteAllText(OutputFile, content);
+        }
+      ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>
