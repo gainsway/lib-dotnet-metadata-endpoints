@@ -143,12 +143,10 @@ public class MetadataEndpointsTests
     [Test]
     public async Task DocumentsTheSummaryAndNullableFields()
     {
-        await using var app = await StartApp(
-            new() { ["ServiceName"] = "user-service" },
-            services =>
-                services
-                    .AddEndpointsApiExplorer()
-                    .AddSwaggerGen(options => options.SupportNonNullableReferenceTypes())
+        await using var app = await StartApp(new() { ["ServiceName"] = "user-service" }, services =>
+            services
+                .AddEndpointsApiExplorer()
+                .AddSwaggerGen(options => options.SupportNonNullableReferenceTypes())
         );
 
         var document = app.Services.GetRequiredService<ISwaggerProvider>().GetSwagger("v1");
