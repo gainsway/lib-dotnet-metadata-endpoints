@@ -1,30 +1,24 @@
-# Spec: `/metadata` reports the service identity
+# `/metadata`: the service identity
 
-Date: 2026-11-05
+`/metadata` tells you which build an instance reports running, and which ASP.NET environment it started with. Every field is either a real value or an explicit `null`, never an empty string that looks like a real value.
 
-## Summary
+## Why it exists
 
-`/metadata` tells you which build an instance reports running, and which ASP.NET environment it started with. Today it returns the service name, the commit and the pod. This change adds the release tag and the environment name. It also makes every field either a real value or an explicit `null`. Today some fields fall back to an empty string, which looks like a real value.
-
-The change is in this library's code, so no service needs build, chart or Dockerfile changes beyond the version bump.
-
-## The problem
-
-- **You can't tell from a running instance which release it is.** `/metadata` returns a commit SHA. To know whether `v2.2.3` is running, someone has to look up which commit that tag points to.
-- **A missing value looks like a real one.** Under `dotnet run`, `CommitShortSha` returns `""`, and a missing `ServiceName` would also return `""`. A blank string reads like a real but empty value.
-- **A wrong environment name is invisible.** A prod pod started with `ASPNETCORE_ENVIRONMENT=Development` loads `appsettings.Development.json` and turns on development-only behaviour. Nothing outside the pod shows it.
+- **Which release is running.** A commit SHA alone means looking up which commit a tag points to. `releaseTag` answers directly.
+- **A missing value must not look like a real one.** A blank string reads like a real but empty value, so missing build values are `null` and a missing `ServiceName` fails at startup.
+- **A wrong environment name is otherwise invisible.** A prod pod started with `ASPNETCORE_ENVIRONMENT=Development` loads `appsettings.Development.json` and turns on development-only behaviour.
 
 ## The response
 
-| Field | Source | Change |
+| Field | Source | When missing |
 | --- | --- | --- |
-| `ServiceName` | `ServiceName` in `appsettings.json` | fails at startup when missing or blank, instead of `""` |
-| `ReleaseTag` | `GIT_REF_NAME` env var | new |
-| `CommitShortSha` | `GIT_SHORT_SHA` env var | `null` when missing or blank, instead of `""` |
-| `Environment` | `app.Environment.EnvironmentName` | new |
-| `InstanceName` | `Environment.MachineName` | unchanged |
+| `ServiceName` | `ServiceName` in `appsettings.json` | fails at startup |
+| `ReleaseTag` | `GIT_REF_NAME` env var | `null` |
+| `CommitShortSha` | `GIT_SHORT_SHA` env var | `null` |
+| `Environment` | `app.Environment.EnvironmentName` | always set |
+| `InstanceName` | `Environment.MachineName` | always set |
 
-These follow the identity attributes that OpenTelemetry defines (`service.name`, `service.version`, `service.instance.id`, `deployment.environment.name`), and what Spring Boot serves at `/actuator/info`. Our services only set some of them on telemetry today: `service.version` is the commit SHA, and the environment name is not set.
+These follow the identity attributes that OpenTelemetry defines (`service.name`, `service.version`, `service.instance.id`, `deployment.environment.name`), and what Spring Boot serves at `/actuator/info`. Our services only set some of them on telemetry: `service.version` is the commit SHA, and the environment name is not set.
 
 ### What each field means
 
@@ -37,12 +31,12 @@ These follow the identity attributes that OpenTelemetry defines (`service.name`,
 ### Where the values come from
 
 - **The release tag and the commit.** `github-workflows/.github/workflows/job.build.yml` passes `GIT_REF_NAME` (the image tag) and `GIT_SHA` (the first 7 characters of `github.sha`) as build args. The service Dockerfiles turn them into env vars (`user-service/src/Dockerfile:8-9`).
-- **The service name.** Each service's `appsettings.json`. All 10 consuming services set it.
+- **The service name.** Each service's `appsettings.json`. All 10 services set it.
 - **The environment name.** `ASPNETCORE_ENVIRONMENT`. Prod charts don't set it, so prod reports `Production` through ASP.NET's documented fallback.
 
 ### Missing values
 
-- **A missing or blank `ServiceName` is a configuration mistake.** The library throws at startup. Services already throw for a missing value when they set up observability (for example `account-service/src/Core/Extensions/ConfigurationExtensions.cs:11`), so no running service is affected.
+- **A missing or blank `ServiceName` is a configuration mistake.** The library throws at startup.
 - **A missing or blank `ReleaseTag` or `CommitShortSha` returns `null`, meaning "build identity unavailable".** Whitespace counts as blank. A local `dotnet run` returns `null`, and so would a misconfigured prod image. So `null` does not mean "local". Any check that relies on these fields, such as a release check, must reject `null`.
 
 | Where it runs | `ReleaseTag` | `CommitShortSha` | `Environment` |
@@ -89,37 +83,14 @@ Each service has an internal hostname on the internal ALB, for example `https://
 
 A response describes the one instance that answered. During a rollout, each request reaches one pod, and old and new pods answer side by side. So a matching tag on one response does not prove the rollout finished. A release check pairs `/metadata` with the rollout status, and with a smoke test through the public gateway route, which the internal hostname bypasses.
 
-## Benefits
+## Versions
 
-- **A developer can see whether their release is running.** One request returns the tag, so there is no mapping from commit to tag.
-- **Release and rollback checks are quick.** Combined with the rollout status, the tag shows which release each instance runs.
-- **Mixed versions during a rollout explain themselves.** With `InstanceName` and `ReleaseTag` together, two different answers read as "this pod is still on the old release" rather than a fault.
-- **A wrong ASP.NET environment shows up.** A prod pod on `Development`, or a local run on `Production`, shows up in one request.
-- **Missing build identity is explicit.** `null` says the identity is unavailable, so it can't be mistaken for a release.
-- **One response leads to the pod's telemetry.** The service name and pod match the attributes on the same pod's traces, and the commit matches their `service.version`.
-- **It supports the public API docs prod check.** That check compares the `/metadata` tag with the one proposed in the docs PR.
-- **No new infrastructure.** The tag and commit are already in every image.
+- **`3.0.0`** added `releaseTag`, `environment` and `openApiSpecHashes`, made `commitShortSha` nullable, and made a missing `ServiceName` fail at startup.
+- **`3.0.1`** removed `openApiSpecHashes` and the MSBuild target that wrote `openapi-hashes.json`. Nothing read the field. A service moving to `3.0.1` deletes its committed `src/Api/openapi-hashes.json`.
 
-## Changes
+## Limits
 
-**In this library**
-- `src/MetadataDto.cs`: add `ReleaseTag` and `Environment`. `ReleaseTag` and `CommitShortSha` are `string?`. `ServiceName`, `Environment` and `InstanceName` stay `required string`.
-- `src/MetadataExtensions.cs`: read `GIT_REF_NAME` and `app.Environment.EnvironmentName`. Throw at startup when `ServiceName` is missing or blank. Return `null` for missing, empty or whitespace build values. Set the summary with `.WithSummary(...)` instead of the obsolete `.WithOpenApi`, and return `TypedResults.Ok` so Swashbuckle documents the response schema.
-- `README.md` and `docs/index.md`: document the response and what `null` means.
-- `test/`: tests that check:
-  - the HTTP response uses `commitShortSha` and `releaseTag`, and writes missing values as explicit `null`, not omitted fields;
-  - build values that are missing, empty or whitespace all return `null`;
-  - a missing, empty or whitespace `ServiceName` fails at startup;
-  - the generated OpenAPI document keeps the summary and shows the nullable fields as nullable.
-**Release**
-- A major version, `3.0.0`. `commitShortSha` can now be `null` where it always held a string, and a missing or blank `ServiceName` now fails at startup. No migration is needed: nothing parses the response, and all 10 services set `ServiceName`.
-- Bump user-service and OMS first, because the public API docs prod check needs them. The other eight services and `backstage-templates` follow on their next change.
-- Removing the spec hashes is a second major version, `4.0.0`, since `openApiSpecHashes` leaves the response. Nothing reads it.
-- After that bump, each service deletes its committed `src/Api/openapi-hashes.json`, drops the `WriteOpenApiSpecHashes` step from its drift check, and regenerates its `openapi.json`, which updates the documented `/metadata` response.
-
-## Not in this change
-
-- **Renaming the `GIT_SHA` build arg.** It now carries the short SHA. Renaming it touches every service Dockerfile, so it keeps its name.
+- **The `GIT_SHA` build arg carries the short SHA.** Renaming it touches every service Dockerfile, so it keeps its name.
 - **The observability version.** `lib-dotnet-observability` sets OpenTelemetry's `service.version` to the commit SHA (`src/ObservabilityExtensions.cs:33`), so traces and `/metadata` name the version differently. Aligning them is a change to that library.
-- **Duplicate reading in services.** Services read the same env vars into their own `ApplicationMetadata` record (`src/Core/AppMetadata.cs`), with `""` fallbacks, to feed observability. Moving that onto this library is separate.
-- **More configuration values.** Domains, URLs and connection strings stay out, so `/metadata` doesn't leak configuration.
+- **Duplicate reading in services.** Services read the same env vars into their own `ApplicationMetadata` record (`src/Core/AppMetadata.cs`), with `""` fallbacks, to feed observability.
+- **No configuration values.** Domains, URLs and connection strings stay out on purpose, so `/metadata` doesn't leak configuration.
